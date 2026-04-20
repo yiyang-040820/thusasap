@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>清华猫咪图鉴 - THU Cat Illustrated Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+        
+        :root {
+            --tw-color-primary: #00a67e;
+        }
+        
+        * {
+            font-family: 'Noto Sans SC', system-ui, sans-serif;
+        }
+        
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        
+        .cat-icon {
+            font-size: 28px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 50%;
+            border: 3px solid #00a67e;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        
+        .modal {
+            animation: modalPop 0.3s ease;
+        }
+        
+        @keyframes modalPop {
+            0% { transform: scale(0.95); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .leaflet-popup-content-wrapper {
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        }
+        
+        .sidebar-cat {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .sidebar-cat:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-900">
+    <div class="flex h-screen overflow-hidden">
+        <!-- 左侧边栏：猫咪列表 + 搜索 + 筛选 -->
+        <div class="w-80 bg-white border-r border-zinc-200 flex flex-col">
+            <!-- 头部 -->
+            <div class="p-6 border-b border-zinc-200 bg-emerald-600 text-white">
+                <div class="flex items-center gap-3">
+                    <div class="text-4xl">🐱</div>
+                    <div>
+                        <h1 class="text-2xl font-bold">清华猫咪图鉴</h1>
+                        <p class="text-emerald-100 text-sm">清华大学小动物保护协会</p>
+                    </div>
+                </div>
+                <p class="mt-2 text-xs opacity-90">共 <span id="cat-count" class="font-semibold">8</span> 只可爱猫咪 · 持续更新中</p>
+            </div>
+
+            <!-- 搜索和筛选 -->
+            <div class="p-4 border-b border-zinc-100">
+                <div class="relative">
+                    <input 
+                        id="search-input"
+                        type="text" 
+                        placeholder="搜索猫咪名字或地点..."
+                        class="w-full pl-10 pr-4 py-3 bg-zinc-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">🔎</span>
+                </div>
+                
+                <div class="flex gap-2 mt-4 text-xs">
+                    <button onclick="filterCats('all')" class="flex-1 active-filter px-4 py-2 rounded-2xl bg-emerald-100 text-emerald-700 font-medium">全部</button>
+                    <button onclick="filterCats('在校')" class="flex-1 px-4 py-2 rounded-2xl hover:bg-zinc-100">在校</button>
+                    <button onclick="filterCats('已绝育')" class="flex-1 px-4 py-2 rounded-2xl hover:bg-zinc-100">已绝育</button>
+                </div>
+            </div>
+
+            <!-- 猫咪列表 -->
+            <div id="cat-list" class="flex-1 overflow-auto p-4 space-y-3">
+                <!-- JS 动态填充 -->
+            </div>
+
+            <!-- 底部信息 -->
+            <div class="p-4 border-t text-xs text-zinc-400 flex items-center justify-between">
+                <div>❤️ 感谢所有喂养员和志愿者</div>
+                <button onclick="showRelationNetwork()" 
+                        class="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-medium">
+                    <span>🐾</span>
+                    <span>查看关系网络</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 主地图区域 -->
+        <div class="flex-1 relative">
+            <div id="map"></div>
+            
+            <!-- 地图顶部浮动工具栏 -->
+            <div class="absolute top-6 left-1/2 -translate-x-1/2 bg-white rounded-3xl shadow-xl px-6 py-3 flex items-center gap-6 z-10 text-sm font-medium">
+                <div onclick="resetMap()" class="flex items-center gap-2 cursor-pointer hover:text-emerald-600">
+                    <span>🔄</span>
+                    <span>重置地图</span>
+                </div>
+                <div class="w-px h-5 bg-zinc-200"></div>
+                <div onclick="toggleCampusOverlay()" class="flex items-center gap-2 cursor-pointer hover:text-emerald-600">
+                    <span id="overlay-status">🗺️</span>
+                    <span>切换清华官方地图底图</span>
+                </div>
+                <div class="text-zinc-400 text-xs">点击标记查看猫咪档案</div>
+            </div>
+
+            <!-- 右下角信息 -->
+            <div class="absolute bottom-6 right-6 bg-white/90 backdrop-blur-md rounded-3xl px-5 py-3 shadow-xl text-xs flex flex-col gap-1 z-10">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">🐱</span>
+                    <div>
+                        <div class="font-semibold text-emerald-700">实时更新</div>
+                        <div class="text-zinc-500">最后更新：2026年4月</div>
+                    </div>
+                </div>
+                <a href="https://space.bilibili.com/或抖音搜索THU小动保" 
+                   target="_blank"
+                   class="text-emerald-600 hover:underline text-[10px]">📱 关注THU小动保抖音获取最新猫咪动态</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 猫咪详情弹窗 -->
+    <div id="detail-modal" onclick="if(event.target===this)hideModal()" 
+         class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
+        <div onclick="event.stopImmediatePropagation()" 
+             class="modal bg-white w-full max-w-2xl mx-4 rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
+            
+            <div class="px-8 pt-8 pb-4 border-b flex items-start justify-between">
+                <div>
+                    <div id="modal-name" class="text-4xl font-bold"></div>
+                    <div id="modal-status" class="mt-1 inline-flex items-center gap-1 text-sm px-3 py-1 rounded-3xl"></div>
+                </div>
+                <button onclick="hideModal()" class="text-4xl leading-none text-zinc-300 hover:text-zinc-500">×</button>
+            </div>
+            
+            <!-- 照片区 -->
+            <div class="px-8 pt-6 grid grid-cols-2 gap-4">
+                <div id="modal-photo-main" class="aspect-square rounded-3xl overflow-hidden shadow-inner bg-zinc-100"></div>
+                <div class="grid grid-rows-2 gap-4">
+                    <div id="modal-photo-1" class="rounded-3xl overflow-hidden shadow-inner bg-zinc-100"></div>
+                    <div id="modal-photo-2" class="rounded-3xl overflow-hidden shadow-inner bg-zinc-100"></div>
+                </div>
+            </div>
+            
+            <!-- 基本信息 -->
+            <div class="px-8 py-6 grid grid-cols-3 gap-6 text-sm border-b">
+                <div>
+                    <div class="text-zinc-400 mb-1">毛色 / 特征</div>
+                    <div id="modal-color" class="font-medium"></div>
+                </div>
+                <div>
+                    <div class="text-zinc-400 mb-1">性别 / 绝育</div>
+                    <div id="modal-gender" class="font-medium"></div>
+                </div>
+                <div>
+                    <div class="text-zinc-400 mb-1">年龄 / 性格</div>
+                    <div id="modal-age" class="font-medium"></div>
+                </div>
+            </div>
+            
+            <!-- 常出现地点 -->
+            <div class="px-8 py-6 border-b">
+                <div class="text-zinc-400 mb-2 text-sm">常出现地址</div>
+                <div id="modal-location" class="font-medium text-lg"></div>
+            </div>
+            
+            <!-- 关系网络 -->
+            <div class="px-8 py-6">
+                <div class="flex justify-between items-baseline mb-4">
+                    <div class="text-zinc-400 text-sm">猫咪关系</div>
+                    <div onclick="hideModal()" class="text-emerald-600 text-xs cursor-pointer">关闭</div>
+                </div>
+                <div id="modal-relations" class="flex flex-wrap gap-3">
+                    <!-- JS 动态生成关系标签 -->
+                </div>
+            </div>
+            
+            <!-- 描述 -->
+            <div class="px-8 pb-8">
+                <div class="text-zinc-400 text-sm mb-2">猫咪小档案</div>
+                <div id="modal-desc" class="text-zinc-600 leading-relaxed text-[15px]"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 关系网络弹窗（简易可视化） -->
+    <div id="relation-modal" onclick="if(event.target===this)hideRelationModal()" 
+         class="hidden fixed inset-0 bg-black/70 z-[60] flex items-center justify-center">
+        <div onclick="event.stopImmediatePropagation()" 
+             class="modal bg-white w-full max-w-3xl mx-4 rounded-3xl p-8 shadow-2xl">
+            <div class="flex justify-between mb-6">
+                <h2 class="text-3xl font-bold">🐾 猫咪关系网络</h2>
+                <button onclick="hideRelationModal()" class="text-4xl text-zinc-300">×</button>
+            </div>
+            <div id="relation-graph" class="min-h-[420px] border-2 border-dashed border-emerald-200 rounded-3xl flex items-center justify-center text-zinc-400 text-lg">
+                <!-- 简单关系图由JS生成 -->
+                <div class="text-center max-w-xs">
+                    <p class="mb-6">示例关系网络（点击任意猫咪可跳转档案）<br>实际使用时可接入 vis.js 或 echarts 实现完整力导向图</p>
+                    <div id="simple-network" class="flex flex-wrap gap-4 justify-center"></div>
+                </div>
+            </div>
+            <p class="text-center text-xs text-zinc-400 mt-8">关系数据由小动保志愿者维护 · 母子 / 好友 / 竞争关系等</p>
+        </div>
+    </div>
+
+    <script>
+        // Tailwind 初始化
+        function initTailwind() {
+            tailwind.config = {
+                content: [],
+                theme: {
+                    extend: {}
+                }
+            }
+        }
+
+        // ==================== 猫咪数据（请在这里替换为真实数据！） ====================
+        let catsData = [
+            {
+                id: 1,
+                name: "橘橘",
+                color: "经典橘猫，白色胸口",
+                gender: "公猫 · 已绝育",
+                age: "约3岁 · 超级亲人吃货",
+                location: "紫荆操场东南角、5号楼草坪",
+                lat: 40.0038,
+                lng: 116.3285,
+                status: "在校",
+                desc: "最常见的一只橘猫，喜欢在操场晒太阳，也经常去紫荆食堂后门蹭饭。性格温和，见人就翻肚皮求摸。",
+                photos: [
+                    "https://picsum.photos/id/1015/800/800",
+                    "https://picsum.photos/id/1005/800/800",
+                    "https://picsum.photos/id/106/800/800"
+                ],
+                relations: [
+                    { id: 2, name: "花花", type: "好友" },
+                    { id: 5, name: "猫馆长", type: "继承地盘" }
+                ]
+            },
+            {
+                id: 2,
+                name: "花花",
+                color: "三花猫，橘白黑",
+                gender: "母猫 · 已绝育",
+                age: "约4岁 · 优雅社牛",
+                location: "旧图书馆门口、草坪",
+                lat: 40.0005,
+                lng: 116.3212,
+                status: "在校",
+                desc: "旧图书馆的常驻“馆长继承人”，经常趴在台阶上看书的学生。性格温和，喜欢被拍照。",
+                photos: [
+                    "https://picsum.photos/id/133/800/800",
+                    "https://picsum.photos/id/201/800/800",
+                    "https://picsum.photos/id/1009/800/800"
+                ],
+                relations: [
+                    { id: 1, name: "橘橘", type: "好友" },
+                    { id: 3, name: "黑豹", type: "竞争者" }
+                ]
+            },
+            {
+                id: 3,
+                name: "黑豹",
+                color: "纯黑短毛，油亮",
+                gender: "公猫 · 已绝育",
+                age: "约2岁 · 警惕王",
+                location: "荷园食堂后门、西操场",
+                lat: 39.9982,
+                lng: 116.3301,
+                status: "在校",
+                desc: "行动迅速的黑猫，晚上最活跃。喜欢在食堂附近巡逻，偶尔会和其他猫争夺地盘。",
+                photos: [
+                    "https://picsum.photos/id/251/800/800",
+                    "https://picsum.photos/id/1003/800/800",
+                    "https://picsum.photos/id/866/800/800"
+                ],
+                relations: [
+                    { id: 2, name: "花花", type: "竞争者" }
+                ]
+            },
+            {
+                id: 4,
+                name: "灰灰",
+                color: "灰虎斑，白色爪子",
+                gender: "母猫 · 已绝育",
+                age: "约1岁 · 害羞小可爱",
+                location: "学生宿舍区（紫荆公寓）",
+                lat: 40.0052,
+                lng: 116.3258,
+                status: "在校",
+                desc: "新生代小猫，胆子较小，喜欢躲在宿舍楼下的绿化带里。志愿者经常投喂。",
+                photos: [
+                    "https://picsum.photos/id/1016/800/800",
+                    "https://picsum.photos/id/1006/800/800",
+                    "https://picsum.photos/id/160/800/800"
+                ],
+                relations: []
+            },
+            {
+                id: 5,
+                name: "猫馆长",
+                color: "灰白相间，优雅长毛",
+                gender: "公猫 · 已绝育",
+                age: "2010-2013 · 已故",
+                location: "旧图书馆（历史地点）",
+                lat: 40.0005,
+                lng: 116.3212,
+                status: "已故",
+                desc: "清华最著名的传奇猫咪，曾常年驻扎旧图书馆，被同学们称为“猫馆长”。已于2013年离开我们，但永远活在大家心中。",
+                photos: [
+                    "https://picsum.photos/id/1005/800/800",
+                    "https://picsum.photos/id/133/800/800",
+                    "https://picsum.photos/id/201/800/800"
+                ],
+                relations: [
+                    { id: 1, name: "橘橘", type: "地盘继承" },
+                    { id: 2, name: "花花", type: "地盘继承" }
+                ]
+            },
+            {
+                id: 6,
+                name: "小奶",
+                color: "乳白色短毛",
+                gender: "母猫 · 已绝育",
+                age: "约5个月",
+                location: "新图书馆附近",
+                lat: 39.9991,
+                lng: 116.3239,
+                status: "在校",
+                desc: "2025年新生小奶猫，非常粘人，经常跟着志愿者跑。",
+                photos: [
+                    "https://picsum.photos/id/1009/800/800",
+                    "https://picsum.photos/id/106/800/800",
+                    "https://picsum.photos/id/1015/800/800"
+                ],
+                relations: [
+                    { id: 4, name: "灰灰", type: "母子" }
+                ]
+            }
+        ]
+
+        // Leaflet 地图实例
+        let map;
+        let markers = {};
+        let campusOverlayLayer = null;
+        let isOverlayOn = false;
+
+        // 初始化地图
+        function initMap() {
+            // 清华主校区中心坐标（实际使用时可微调）
+            map = L.map('map', {
+                zoomControl: true,
+                attributionControl: false
+            }).setView([40.001, 116.326], 16.5);
+
+            // 默认 OpenStreetMap 底图（清晰、实时）
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                className: 'osm-tiles'
+            }).addTo(map);
+
+            // 添加所有猫咪标记
+            catsData.forEach(cat => {
+                const icon = L.divIcon({
+                    className: 'cat-icon',
+                    html: cat.status === '已故' ? '🪦' : '🐱',
+                    iconSize: [42, 42],
+                    iconAnchor: [21, 42]
+                });
+
+                const marker = L.marker([cat.lat, cat.lng], { icon: icon })
+                    .addTo(map)
+                    .bindTooltip(cat.name, { permanent: false, direction: 'top' })
+                    .on('click', () => showDetail(cat));
+
+                markers[cat.id] = marker;
+            });
+
+            console.log('%c✅ 清华猫咪图鉴地图初始化完成！共 ' + catsData.length + ' 只猫咪标记', 'color:#00a67e;font-weight:bold');
+        }
+
+        // 渲染左侧猫咪列表
+        function renderCatList(filteredCats) {
+            const container = document.getElementById('cat-list');
+            container.innerHTML = '';
+
+            if (filteredCats.length === 0) {
+                container.innerHTML = `<div class="text-center py-12 text-zinc-400">没有找到匹配的猫咪～</div>`;
+                return;
+            }
+
+            filteredCats.forEach(cat => {
+                const div = document.createElement('div');
+                div.className = `sidebar-cat flex gap-4 p-3 rounded-3xl cursor-pointer border border-transparent hover:border-emerald-200 bg-white`;
+                div.innerHTML = `
+                    <div class="w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0 shadow-inner">
+                        <img src="${cat.photos[0]}" alt="${cat.name}" class="w-full h-full object-cover">
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between">
+                            <div class="font-semibold text-lg">${cat.name}</div>
+                            <div class="text-xs px-3 py-px rounded-3xl ${cat.status === '已故' ? 'bg-zinc-200 text-zinc-500' : 'bg-emerald-100 text-emerald-700'}">${cat.status}</div>
+                        </div>
+                        <div class="text-zinc-500 text-sm truncate">${cat.location}</div>
+                        <div class="text-emerald-600 text-xs mt-1">${cat.color}</div>
+                    </div>
+                `;
+                div.onclick = () => {
+                    showDetail(cat);
+                    // 地图飞到标记位置
+                    map.flyTo([cat.lat, cat.lng], 18, { duration: 1.5 });
+                };
+                container.appendChild(div);
+            });
+
+            document.getElementById('cat-count').textContent = filteredCats.length;
+        }
+
+        // 显示详情弹窗
+        function showDetail(cat) {
+            const modal = document.getElementById('detail-modal');
+            
+            // 主标题
+            document.getElementById('modal-name').innerHTML = `${cat.name} <span class="text-2xl ml-2">${cat.status === '已故' ? '🪦' : '🐱'}</span>`;
+            
+            // 状态标签
+            const statusEl = document.getElementById('modal-status');
+            statusEl.innerHTML = cat.status === '已故' 
+                ? `<span class="bg-zinc-200 text-zinc-600 px-4 py-1 rounded-3xl">已故 · 永远怀念</span>` 
+                : `<span class="bg-emerald-100 text-emerald-700 px-4 py-1 rounded-3xl">在校 · 健康</span>`;
+            
+            // 照片
+            document.getElementById('modal-photo-main').innerHTML = `<img src="${cat.photos[0]}" class="w-full h-full object-cover">`;
+            document.getElementById('modal-photo-1').innerHTML = `<img src="${cat.photos[1]}" class="w-full h-full object-cover">`;
+            document.getElementById('modal-photo-2').innerHTML = `<img src="${cat.photos[2]}" class="w-full h-full object-cover">`;
+            
+            // 基本信息
+            document.getElementById('modal-color').textContent = cat.color;
+            document.getElementById('modal-gender').textContent = cat.gender;
+            document.getElementById('modal-age').textContent = cat.age;
+            document.getElementById('modal-location').innerHTML = `📍 ${cat.location}`;
+            document.getElementById('modal-desc').textContent = cat.desc;
+            
+            // 关系
+            const relContainer = document.getElementById('modal-relations');
+            relContainer.innerHTML = '';
+            
+            if (cat.relations.length === 0) {
+                relContainer.innerHTML = `<div class="text-zinc-400 text-sm py-4">暂无已知关系～</div>`;
+            } else {
+                cat.relations.forEach(rel => {
+                    const relatedCat = catsData.find(c => c.id === rel.id);
+                    const chip = document.createElement('div');
+                    chip.className = `px-5 py-2 bg-emerald-50 hover:bg-emerald-100 rounded-3xl text-sm flex items-center gap-2 cursor-pointer`;
+                    chip.innerHTML = `
+                        <span class="text-xl">${relatedCat ? '🐱' : '❓'}</span>
+                        <span>${rel.name}</span>
+                        <span class="text-emerald-700 text-xs font-medium">${rel.type}</span>
+                    `;
+                    chip.onclick = () => {
+                        hideModal();
+                        setTimeout(() => {
+                            showDetail(relatedCat || cat);
+                        }, 300);
+                    };
+                    relContainer.appendChild(chip);
+                });
+            }
+            
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+        }
+
+        function hideModal() {
+            const modal = document.getElementById('detail-modal');
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        }
+
+        // 筛选猫咪
+        function filterCats(type) {
+            let filtered = catsData;
+            
+            if (type === '在校') {
+                filtered = catsData.filter(c => c.status === '在校');
+            } else if (type === '已绝育') {
+                filtered = catsData.filter(c => c.gender.includes('已绝育'));
+            }
+            
+            // 同时过滤搜索框
+            const searchText = document.getElementById('search-input').value.toLowerCase().trim();
+            if (searchText) {
+                filtered = filtered.filter(cat => 
+                    cat.name.toLowerCase().includes(searchText) || 
+                    cat.location.toLowerCase().includes(searchText)
+                );
+            }
+            
+            renderCatList(filtered);
+            
+            // 高亮地图上的对应标记（可选）
+            Object.keys(markers).forEach(id => {
+                const marker = markers[id];
+                const cat = catsData.find(c => c.id == id);
+                if (filtered.some(f => f.id === cat.id)) {
+                    marker.getElement().style.opacity = 1;
+                } else {
+                    marker.getElement().style.opacity = 0.3;
+                }
+            });
+        }
+
+        // 切换官方清华地图底图（使用 Wikimedia 高清地图）
+        function toggleCampusOverlay() {
+            if (!campusOverlayLayer) {
+                // 高清清华校园地图（2022版，Wikimedia 公共资源）
+                const url = 'https://upload.wikimedia.org/wikipedia/commons/8/85/Tsinghua_University_Map_2022_%28vi%29.png';
+                
+                // 清华校园大致地理边界（西南-东北角，实际使用时可微调）
+                const bounds = [
+                    [39.989, 116.310],  // 西南角
+                    [40.012, 116.340]   // 东北角
+                ];
+                
+                campusOverlayLayer = L.imageOverlay(url, bounds, {
+                    opacity: 0.95,
+                    interactive: false
+                });
+                
+                console.log('%c🗺️ 已加载清华官方地图底图（Wikimedia 2022版）', 'color:#00a67e');
+            }
+            
+            if (isOverlayOn) {
+                map.removeLayer(campusOverlayLayer);
+                isOverlayOn = false;
+                document.getElementById('overlay-status').innerHTML = '🗺️';
+            } else {
+                campusOverlayLayer.addTo(map);
+                isOverlayOn = true;
+                document.getElementById('overlay-status').innerHTML = '📍';
+                // 提示用户可微调透明度或边界
+                alert('✅ 已切换为高清清华校园地图！\n\n如果标记位置略有偏差，请在开发者工具中修改 bounds 坐标后刷新页面即可完美对齐。');
+            }
+        }
+
+        // 重置地图到初始状态
+        function resetMap() {
+            map.flyTo([40.001, 116.326], 16.5);
+        }
+
+        // 关系网络弹窗（简易版）
+        function showRelationNetwork() {
+            const modal = document.getElementById('relation-modal');
+            const container = document.getElementById('simple-network');
+            container.innerHTML = '';
+            
+            catsData.forEach(cat => {
+                const node = document.createElement('div');
+                node.className = `px-6 py-3 bg-white border border-emerald-200 rounded-3xl shadow-sm text-center cursor-pointer hover:shadow-md`;
+                node.innerHTML = `
+                    <div class="text-3xl mb-1">${cat.status === '已故' ? '🪦' : '🐱'}</div>
+                    <div class="font-semibold">${cat.name}</div>
+                    <div class="text-xs text-emerald-600">${cat.relations.length} 个关系</div>
+                `;
+                node.onclick = () => {
+                    hideRelationModal();
+                    setTimeout(() => showDetail(cat), 400);
+                };
+                container.appendChild(node);
+            });
+            
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+        }
+
+        function hideRelationModal() {
+            const modal = document.getElementById('relation-modal');
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        }
+
+        // 搜索输入监听
+        function bindSearch() {
+            const input = document.getElementById('search-input');
+            input.addEventListener('input', () => {
+                filterCats('all'); // 重新渲染（会同时应用搜索）
+            });
+        }
+
+        // 主启动函数
+        function main() {
+            initTailwind();
+            initMap();
+            renderCatList(catsData);
+            bindSearch();
+            
+            console.log('%c🎉 清华猫咪图鉴网页版已生成完成！\n直接保存为 .html 文件即可使用\n数据在 catsData 数组中修改即可', 'color:#00a67e;font-size:13px');
+            
+            // 小提示
+            console.log('💡 提示：\n1. 照片请换成小动保提供的真实图片URL\n2. 坐标可通过高德/百度地图拾取清华具体位置\n3. 需要后台管理？可以再扩展为 Firebase 或 Vercel + JSON');
+        }
+
+        // 页面加载完成后启动
+        window.onload = main;
+    </script>
+</body>
+</html>
