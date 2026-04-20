@@ -1,0 +1,1038 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>清华大学校园猫咪图鉴 🐱</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  :root {
+    --purple: #6B2FE0;
+    --purple-light: #9B6FFF;
+    --purple-pale: #F0EAFF;
+    --teal: #00B4B4;
+    --gold: #C9A227;
+    --bg: #F7F5FF;
+    --card-bg: #FFFFFF;
+    --text: #2D1B69;
+    --text-light: #6B6B8A;
+    --border: #E8E0FF;
+  }
+
+  body {
+    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header */
+  header {
+    background: linear-gradient(135deg, #4A0FA8 0%, #6B2FE0 50%, #9B6FFF 100%);
+    color: white;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 2px 12px rgba(107,47,224,0.3);
+    z-index: 100;
+    flex-shrink: 0;
+  }
+
+  .header-logo {
+    font-size: 32px;
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+
+  .header-title h1 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 2px;
+  }
+  .header-title p {
+    font-size: 12px;
+    opacity: 0.8;
+    margin-top: 2px;
+  }
+
+  .header-stats {
+    margin-left: auto;
+    display: flex;
+    gap: 20px;
+  }
+  .stat-item {
+    text-align: center;
+  }
+  .stat-num {
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .stat-label {
+    font-size: 11px;
+    opacity: 0.75;
+  }
+
+  /* Nav Tabs */
+  .nav-tabs {
+    display: flex;
+    background: white;
+    border-bottom: 2px solid var(--border);
+    padding: 0 24px;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .nav-tab {
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-light);
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    margin-bottom: -2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .nav-tab:hover { color: var(--purple); }
+  .nav-tab.active {
+    color: var(--purple);
+    border-bottom-color: var(--purple);
+    font-weight: 600;
+  }
+
+  /* Main Layout */
+  .main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ===== MAP VIEW ===== */
+  #view-map {
+    display: flex;
+    width: 100%;
+    height: 100%;
+  }
+
+  .map-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(145deg, #EAF4E8 0%, #D4ECD1 100%);
+  }
+
+  .campus-map {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Cat markers */
+  .cat-marker {
+    cursor: pointer;
+    transition: transform 0.2s;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
+  }
+  .cat-marker:hover { transform: scale(1.2); }
+  .cat-marker.active { transform: scale(1.25); }
+
+  .marker-bubble {
+    animation: bounce 2s ease-in-out infinite;
+  }
+  @keyframes bounce {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+
+  .marker-pulse {
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 0.6; r: 18px; }
+    50% { opacity: 0.2; r: 24px; }
+  }
+
+  /* Cat Info Panel */
+  .cat-panel {
+    width: 340px;
+    background: white;
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+  }
+
+  .panel-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-light);
+    gap: 12px;
+    padding: 24px;
+    text-align: center;
+  }
+  .panel-empty .big-emoji { font-size: 64px; }
+  .panel-empty p { font-size: 14px; line-height: 1.6; }
+
+  .cat-profile { display: none; flex-direction: column; height: 100%; }
+  .cat-profile.visible { display: flex; }
+
+  .cat-hero {
+    background: linear-gradient(135deg, #4A0FA8, #9B6FFF);
+    padding: 20px;
+    text-align: center;
+    position: relative;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .cat-hero img {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 4px solid rgba(255,255,255,0.4);
+    object-fit: cover;
+    background: rgba(255,255,255,0.2);
+  }
+
+  .cat-hero h2 {
+    font-size: 22px;
+    font-weight: 700;
+    margin-top: 10px;
+  }
+  .cat-hero .cat-nickname {
+    font-size: 13px;
+    opacity: 0.85;
+    margin-top: 2px;
+  }
+
+  .cat-badges {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .badge {
+    background: rgba(255,255,255,0.25);
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 11px;
+  }
+
+  .cat-details {
+    padding: 16px;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .detail-section {
+    margin-bottom: 16px;
+  }
+  .section-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--purple);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .info-item {
+    background: var(--purple-pale);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .info-label {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-bottom: 2px;
+  }
+  .info-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .location-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .location-tag {
+    background: #E8F5E9;
+    color: #2E7D32;
+    border-radius: 12px;
+    padding: 4px 10px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .personality-text {
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text-light);
+  }
+
+  .relationship-list { display: flex; flex-direction: column; gap: 8px; }
+  .rel-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    background: var(--purple-pale);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .rel-item:hover { background: #DDD5FF; }
+  .rel-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--purple-light);
+  }
+  .rel-info { flex: 1; }
+  .rel-name { font-size: 13px; font-weight: 600; }
+  .rel-type { font-size: 11px; color: var(--text-light); }
+  .rel-emoji { font-size: 16px; }
+
+  /* ===== GALLERY VIEW ===== */
+  #view-gallery {
+    display: none;
+    padding: 24px;
+    overflow-y: auto;
+    width: 100%;
+  }
+
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+  }
+
+  .gallery-card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(107,47,224,0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    border: 1px solid var(--border);
+  }
+  .gallery-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(107,47,224,0.2);
+  }
+
+  .gallery-card-img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+  }
+  .gallery-card-body { padding: 14px; }
+  .gallery-card-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .gallery-card-sub {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 2px;
+    margin-bottom: 10px;
+  }
+  .gallery-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .gallery-tag {
+    background: var(--purple-pale);
+    color: var(--purple);
+    border-radius: 10px;
+    padding: 2px 8px;
+    font-size: 11px;
+  }
+
+  /* ===== RELATIONSHIP VIEW ===== */
+  #view-relations {
+    display: none;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #relation-svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .relation-legend {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background: white;
+    border-radius: 12px;
+    padding: 12px 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+    border: 1px solid var(--border);
+  }
+  .legend-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-light);
+    margin-bottom: 4px;
+  }
+  .legend-line {
+    width: 30px;
+    height: 3px;
+    border-radius: 2px;
+  }
+
+  /* Tooltip */
+  .tooltip {
+    position: fixed;
+    background: rgba(45,27,105,0.9);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 1000;
+    display: none;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #C4B5FD; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-logo">🐱</div>
+  <div class="header-title">
+    <h1>清华大学校园猫咪图鉴</h1>
+    <p>清华大学小动物保护协会 · 用爱守护每一只校园猫</p>
+  </div>
+  <div class="header-stats">
+    <div class="stat-item">
+      <div class="stat-num">6</div>
+      <div class="stat-label">已建档猫咪</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">8</div>
+      <div class="stat-label">活动区域</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">2024</div>
+      <div class="stat-label">建档年份</div>
+    </div>
+  </div>
+</header>
+
+<div class="nav-tabs">
+  <div class="nav-tab active" onclick="switchView('map')" id="tab-map">🗺️ 校园地图</div>
+  <div class="nav-tab" onclick="switchView('gallery')" id="tab-gallery">📋 猫咪图鉴</div>
+  <div class="nav-tab" onclick="switchView('relations')" id="tab-relations">🔗 关系图谱</div>
+</div>
+
+<div class="main-content">
+
+  <!-- MAP VIEW -->
+  <div id="view-map">
+    <div class="map-container">
+      <svg class="campus-map" viewBox="0 0 900 620" xmlns="http://www.w3.org/2000/svg">
+        <!-- Background grass -->
+        <rect width="900" height="620" fill="#C8DFC4"/>
+        
+        <!-- Main roads -->
+        <rect x="0" y="280" width="900" height="22" fill="#E8E0C8" opacity="0.9"/>
+        <rect x="430" y="0" width="22" height="620" fill="#E8E0C8" opacity="0.9"/>
+        <rect x="0" y="450" width="900" height="16" fill="#E8E0C8" opacity="0.8"/>
+        <rect x="200" y="0" width="16" height="620" fill="#E8E0C8" opacity="0.8"/>
+        <rect x="680" y="0" width="16" height="620" fill="#E8E0C8" opacity="0.8"/>
+
+        <!-- Road labels -->
+        <text x="450" y="274" text-anchor="middle" font-size="10" fill="#8B7D5A" font-family="sans-serif">学堂路</text>
+        <text x="437" y="440" text-anchor="middle" font-size="10" fill="#8B7D5A" font-family="sans-serif" transform="rotate(-90, 437, 440)">清华路</text>
+
+        <!-- Lotus Pond 荷塘 -->
+        <ellipse cx="300" cy="190" rx="90" ry="60" fill="#7EC8E3" opacity="0.75"/>
+        <ellipse cx="300" cy="190" rx="75" ry="48" fill="#5BB8D4" opacity="0.5"/>
+        <!-- Lotus leaves -->
+        <circle cx="270" cy="175" r="12" fill="#5DA862" opacity="0.6"/>
+        <circle cx="310" cy="160" r="10" fill="#5DA862" opacity="0.5"/>
+        <circle cx="330" cy="200" r="14" fill="#5DA862" opacity="0.6"/>
+        <circle cx="280" cy="215" r="11" fill="#5DA862" opacity="0.5"/>
+        <text x="300" y="195" text-anchor="middle" font-size="13" fill="#1A6B8A" font-weight="bold" font-family="sans-serif">荷塘月色</text>
+
+        <!-- 工字厅 Gongziting -->
+        <rect x="130" y="140" width="80" height="55" rx="4" fill="#B5946A"/>
+        <rect x="138" y="148" width="64" height="39" rx="2" fill="#C9A87C"/>
+        <polygon points="130,140 210,140 170,118" fill="#8B6040"/>
+        <text x="170" y="215" text-anchor="middle" font-size="12" fill="#5C3A1E" font-weight="bold" font-family="sans-serif">工字厅</text>
+
+        <!-- 大礼堂 Auditorium -->
+        <rect x="370" y="100" width="120" height="80" rx="6" fill="#C09060"/>
+        <rect x="382" y="112" width="96" height="56" rx="3" fill="#D4A870"/>
+        <ellipse cx="430" cy="100" rx="50" ry="22" fill="#A07040"/>
+        <circle cx="430" cy="88" r="8" fill="#8B5E30"/>
+        <text x="430" y="205" text-anchor="middle" font-size="12" fill="#5C3A1E" font-weight="bold" font-family="sans-serif">大礼堂</text>
+
+        <!-- 清华学堂 -->
+        <rect x="580" y="110" width="90" height="70" rx="4" fill="#B8A080"/>
+        <polygon points="580,110 670,110 625,88" fill="#9A7855"/>
+        <rect x="590" y="120" width="70" height="50" rx="2" fill="#C8B090"/>
+        <text x="625" y="205" text-anchor="middle" font-size="12" fill="#5C3A1E" font-weight="bold" font-family="sans-serif">清华学堂</text>
+
+        <!-- 图书馆 Library -->
+        <rect x="480" y="310" width="140" height="100" rx="6" fill="#9E7DC0"/>
+        <rect x="492" y="322" width="116" height="76" rx="3" fill="#B090D4"/>
+        <polygon points="480,310 620,310 550,285" fill="#7A5A9E"/>
+        <text x="550" y="230" text-anchor="middle" font-size="12" fill="white" font-weight="bold" font-family="sans-serif">图书馆</text>
+        <!-- Library windows -->
+        <rect x="500" y="333" width="16" height="20" rx="2" fill="#DDD0F0" opacity="0.7"/>
+        <rect x="525" y="333" width="16" height="20" rx="2" fill="#DDD0F0" opacity="0.7"/>
+        <rect x="550" y="333" width="16" height="20" rx="2" fill="#DDD0F0" opacity="0.7"/>
+        <rect x="575" y="333" width="16" height="20" rx="2" fill="#DDD0F0" opacity="0.7"/>
+        <rect x="600" y="333" width="10" height="20" rx="2" fill="#DDD0F0" opacity="0.7"/>
+
+        <!-- 主楼 Main Building -->
+        <rect x="355" y="320" width="60" height="100" rx="4" fill="#7A9ABA"/>
+        <rect x="325" y="360" width="120" height="60" rx="4" fill="#8AAAC8"/>
+        <polygon points="355,320 415,320 385,300" fill="#5A7A9A"/>
+        <text x="385" y="445" text-anchor="middle" font-size="12" fill="#2A4A6A" font-weight="bold" font-family="sans-serif">主楼</text>
+        <!-- Windows -->
+        <rect x="365" y="330" width="10" height="14" rx="1" fill="#C8DDF0" opacity="0.8"/>
+        <rect x="382" y="330" width="10" height="14" rx="1" fill="#C8DDF0" opacity="0.8"/>
+        <rect x="399" y="330" width="10" height="14" rx="1" fill="#C8DDF0" opacity="0.8"/>
+
+        <!-- 体育馆 Gymnasium -->
+        <ellipse cx="760" cy="360" rx="80" ry="55" fill="#A0B870"/>
+        <ellipse cx="760" cy="360" rx="66" ry="43" fill="#B8CC88"/>
+        <text x="760" y="365" text-anchor="middle" font-size="12" fill="#3A5A1A" font-weight="bold" font-family="sans-serif">综合体育馆</text>
+
+        <!-- 紫荆园食堂 Canteen -->
+        <rect x="120" y="340" width="120" height="80" rx="6" fill="#E8A060"/>
+        <rect x="130" y="350" width="100" height="60" rx="3" fill="#F0B878"/>
+        <text x="180" y="400" text-anchor="middle" font-size="12" fill="#7A3A00" font-weight="bold" font-family="sans-serif">紫荆园食堂</text>
+
+        <!-- 宿舍区 Dorms -->
+        <rect x="60" y="480" width="200" height="110" rx="6" fill="#D4B8C0"/>
+        <rect x="70" y="490" width="80" height="90" rx="3" fill="#E0C8CC"/>
+        <rect x="162" y="490" width="80" height="90" rx="3" fill="#E0C8CC"/>
+        <text x="160" y="545" text-anchor="middle" font-size="12" fill="#6A3A4A" font-weight="bold" font-family="sans-serif">紫荆学生公寓</text>
+
+        <!-- 二教 -->
+        <rect x="640" y="310" width="80" height="70" rx="4" fill="#C8A060"/>
+        <rect x="650" y="320" width="60" height="50" rx="2" fill="#D8B070"/>
+        <text x="680" y="400" text-anchor="middle" font-size="12" fill="#5A3A10" font-weight="bold" font-family="sans-serif">第二教学楼</text>
+
+        <!-- Trees scattered -->
+        <g opacity="0.8">
+          <circle cx="80" cy="250" r="16" fill="#4A8B3A"/>
+          <circle cx="108" cy="248" r="13" fill="#5A9B4A"/>
+          <circle cx="90" cy="235" r="11" fill="#3A7B2A"/>
+          
+          <circle cx="780" cy="200" r="16" fill="#4A8B3A"/>
+          <circle cx="808" cy="198" r="13" fill="#5A9B4A"/>
+          
+          <circle cx="500" cy="230" r="14" fill="#4A8B3A"/>
+          <circle cx="525" cy="228" r="11" fill="#5A9B4A"/>
+
+          <circle cx="260" cy="380" r="13" fill="#4A8B3A"/>
+          <circle cx="240" cy="370" r="10" fill="#5A9B4A"/>
+          
+          <circle cx="700" cy="450" r="15" fill="#4A8B3A"/>
+          <circle cx="725" cy="448" r="12" fill="#5A9B4A"/>
+
+          <circle cx="840" cy="120" r="16" fill="#4A8B3A"/>
+          <circle cx="860" cy="115" r="12" fill="#5A9B4A"/>
+
+          <circle cx="150" cy="500" r="0" fill="transparent"/>
+        </g>
+
+        <!-- Paths between buildings -->
+        <path d="M 170 195 Q 200 230 180 300" stroke="#E8E0C8" stroke-width="8" fill="none" opacity="0.7"/>
+        <path d="M 430 180 Q 430 230 430 280" stroke="#E8E0C8" stroke-width="8" fill="none" opacity="0.7"/>
+
+        <!-- ======================== CAT MARKERS ======================== -->
+
+        <!-- 橘福 @ 紫荆园食堂 (180, 330) -->
+        <g class="cat-marker" onclick="selectCat(0)" id="marker-0">
+          <circle class="marker-pulse" cx="180" cy="328" r="20" fill="#FF8C00" opacity="0.3"/>
+          <circle cx="180" cy="328" r="18" fill="#FF8C00"/>
+          <circle cx="180" cy="328" r="15" fill="#FFA040"/>
+          <text x="180" y="333" text-anchor="middle" font-size="16">🐱</text>
+          <rect x="148" y="298" width="64" height="20" rx="10" fill="rgba(0,0,0,0.65)"/>
+          <text x="180" y="312" text-anchor="middle" font-size="11" fill="white" font-family="sans-serif">橘福 · 橘猫</text>
+        </g>
+
+        <!-- 雪团 @ 图书馆 (550, 370) -->
+        <g class="cat-marker" onclick="selectCat(1)" id="marker-1">
+          <circle class="marker-pulse" cx="550" cy="365" r="20" fill="#A0A0FF" opacity="0.3"/>
+          <circle cx="550" cy="365" r="18" fill="#7B5EA7"/>
+          <circle cx="550" cy="365" r="15" fill="#9B7EC8"/>
+          <text x="550" y="370" text-anchor="middle" font-size="16">🐱</text>
+          <rect x="518" y="338" width="64" height="20" rx="10" fill="rgba(0,0,0,0.65)"/>
+          <text x="550" y="352" text-anchor="middle" font-size="11" fill="white" font-family="sans-serif">雪团 · 白猫</text>
+        </g>
+
+        <!-- 月月 @ 荷塘 (300, 190) -->
+        <g class="cat-marker" onclick="selectCat(2)" id="marker-2">
+          <circle class="marker-pulse" cx="300" cy="245" r="20" fill="#FF6EA0" opacity="0.3"/>
+          <circle cx="300" cy="245" r="18" fill="#E05080"/>
+          <circle cx="300" cy="245" r="15" fill="#F07090"/>
+          <text x="300" y="250" text-anchor="middle" font-size="16">🐱</text>
+          <rect x="262" y="218" width="76" height="20" rx="10" fill="rgba(0,0,0,0.65)"/>
+          <text x="300" y="232" text-anchor="middle" font-size="11" fill="white" font-family="sans-serif">月月 · 三花猫</text>
+        </g>
+
+        <!-- 茶叶 @ 工字厅 (170, 150) -->
+        <g class="cat-marker" onclick="selectCat(3)" id="marker-3">
+          <circle class="marker-pulse" cx="170" cy="148" r="20" fill="#50C878" opacity="0.3"/>
+          <circle cx="170" cy="148" r="18" fill="#2E7D32"/>
+          <circle cx="170" cy="148" r="15" fill="#4CAF50"/>
+          <text x="170" y="153" text-anchor="middle" font-size="16">🐱</text>
+          <rect x="132" y="120" width="76" height="20" rx="10" fill="rgba(0,0,0,0.65)"/>
+          <text x="170" y="134" text-anchor="middle" font-size="11" fill="white" font-family="sans-serif">茶叶 · 狸花猫</text>
+        </g>
+
+        <!-- 豆豆 @ 体育馆 (760, 310) -->
+        <g class="cat-marker" onclick="selectCat(4)" id="marker-4">
+          <circle class="marker-pulse" cx="760" cy="308" r="20" fill="#60A0E0" opacity="0.3"/>
+          <circle cx="760" cy="308" r="18" fill="#1565C0"/>
+          <circle cx="760" cy="308" r="15" fill="#1976D2"/>
+          <text x="760" y="313" text-anchor="middle" font-size="16">🐱</text>
+          <rect x="722" y="280" width="76" height="20" rx="10" fill="rgba(0,0,0,0.65)"/>
+          <text x="760" y="294" text-anchor="middle" font-size="11" fill="white" font-family="sans-serif">豆豆 · 奶牛猫</text>
+        </g>
+
+        <!-- 小煤球 @ 主楼 (385, 295) -->
+        <g class="cat-marker" onclick="selectCat(5)" id="marker-5">
+          <circle class="marker-pulse" cx="385" cy="293" r="20" fill="#808080" opacity="0.3"/>
+          <circle cx="385" cy="293" r="18" fill="#37474F"/>
+          <circle cx="385" cy="293" r="15" fill="#546E7A"/>
+          <text x="385" y="298" text-anchor="middle" font-size="16">🐱</text>
+          <rect x="344" y="265" width="82" height="20" rx="10" fill="rgba(0,0,0,0.65)"/>
+          <text x="385" y="279" text-anchor="middle" font-size="11" fill="white" font-family="sans-serif">小煤球 · 黑猫</text>
+        </g>
+
+        <!-- Map legend -->
+        <rect x="720" y="480" width="165" height="120" rx="10" fill="white" opacity="0.92"/>
+        <text x="730" y="498" font-size="12" fill="#2D1B69" font-weight="bold" font-family="sans-serif">🗺️ 图例</text>
+        <circle cx="736" cy="514" r="6" fill="#FF8C00"/>
+        <text x="748" y="518" font-size="11" fill="#444" font-family="sans-serif">食堂附近</text>
+        <circle cx="736" cy="530" r="6" fill="#7B5EA7"/>
+        <text x="748" y="534" font-size="11" fill="#444" font-family="sans-serif">图书馆附近</text>
+        <circle cx="736" cy="546" r="6" fill="#E05080"/>
+        <text x="748" y="550" font-size="11" fill="#444" font-family="sans-serif">荷塘附近</text>
+        <circle cx="736" cy="562" r="6" fill="#2E7D32"/>
+        <text x="748" y="566" font-size="11" fill="#444" font-family="sans-serif">工字厅附近</text>
+        <circle cx="736" cy="578" r="6" fill="#1565C0"/>
+        <text x="748" y="582" font-size="11" fill="#444" font-family="sans-serif">体育馆附近</text>
+        <circle cx="736" cy="594" r="6" fill="#37474F"/>
+        <text x="748" y="598" font-size="11" fill="#444" font-family="sans-serif">主楼附近</text>
+
+        <!-- Compass -->
+        <g transform="translate(855, 30)">
+          <circle r="22" fill="white" opacity="0.9"/>
+          <circle r="20" fill="white" stroke="#C4B5FD" stroke-width="1.5"/>
+          <polygon points="0,-14 4,0 0,4 -4,0" fill="#E53935"/>
+          <polygon points="0,14 4,0 0,-4 -4,0" fill="#546E7A"/>
+          <text x="0" y="-17" text-anchor="middle" font-size="9" fill="#E53935" font-family="sans-serif" font-weight="bold">N</text>
+        </g>
+      </svg>
+    </div>
+
+    <!-- Cat Info Panel -->
+    <div class="cat-panel" id="cat-panel">
+      <div class="panel-empty" id="panel-empty">
+        <div class="big-emoji">🐾</div>
+        <p>点击地图上的 <strong>猫咪标记</strong><br>查看详细档案信息</p>
+        <p style="font-size:12px;opacity:0.6;margin-top:8px">共收录 6 只校园猫咪</p>
+      </div>
+      <div class="cat-profile" id="cat-profile">
+        <div class="cat-hero">
+          <img id="profile-img" src="" alt="猫咪图片"/>
+          <h2 id="profile-name"></h2>
+          <div class="cat-nickname" id="profile-nickname"></div>
+          <div class="cat-badges" id="profile-badges"></div>
+        </div>
+        <div class="cat-details">
+          <div class="detail-section">
+            <div class="section-title">📋 基本信息</div>
+            <div class="info-grid" id="profile-info-grid"></div>
+          </div>
+          <div class="detail-section">
+            <div class="section-title">📍 常出现地点</div>
+            <div class="location-tags" id="profile-locations"></div>
+          </div>
+          <div class="detail-section">
+            <div class="section-title">💬 性格描述</div>
+            <div class="personality-text" id="profile-personality"></div>
+          </div>
+          <div class="detail-section">
+            <div class="section-title">🐾 猫咪关系</div>
+            <div class="relationship-list" id="profile-relations"></div>
+          </div>
+          <div class="detail-section">
+            <div class="section-title">❤️ 救助信息</div>
+            <div class="personality-text" id="profile-rescue"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GALLERY VIEW -->
+  <div id="view-gallery">
+    <div class="gallery-grid" id="gallery-grid"></div>
+  </div>
+
+  <!-- RELATIONS VIEW -->
+  <div id="view-relations">
+    <svg id="relation-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="relation-legend">
+      <div class="legend-title">关系类型</div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:#FF6B6B"></div>好友关系
+      </div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:#A855F7"></div>家族关系
+      </div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:#3B82F6;border-top:2px dashed #3B82F6;height:0"></div>竞争关系
+      </div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:#22C55E"></div>共同领地
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+const cats = [
+  {
+    id: 0,
+    name: "橘福",
+    nickname: "别名：小橘子 / 饭桶猫",
+    color: "#FF8C00",
+    breed: "橘猫",
+    gender: "♂ 雄",
+    age: "约 3 岁",
+    weight: "约 6.5 kg",
+    status: "已绝育 ✅",
+    img: "cute_illustrated_cat_portrait_orange_tab_1776656045.png",
+    badges: ["绝育", "常驻", "亲人"],
+    locations: ["紫荆园食堂门口", "紫荆1号楼旁", "食堂垃圾桶区"],
+    personality: "橘福是校园里出了名的\"吃货猫\"，每天准时在紫荆园食堂门口\"上班\"，用它圆滚滚的肚子和萌萌的眼神俘获无数同学的心。性格超级亲人，会主动蹭人，非常适合撸猫减压。",
+    rescue: "2022年由师兄发现时已是成年猫，经协会救助绝育后回归校园。健康状况良好，定期由协会成员投喂。如发现橘福受伤，请联系协会。",
+    relations: [
+      { catId: 2, type: "好朋友", emoji: "🧡", desc: "经常在荷塘边一起晒太阳" },
+      { catId: 3, type: "竞争对手", emoji: "⚔️", desc: "为食堂领地偶有摩擦" }
+    ]
+  },
+  {
+    id: 1,
+    name: "雪团",
+    nickname: "别名：图书馆精灵 / 白月光",
+    color: "#7B5EA7",
+    breed: "白猫（疑似混血）",
+    gender: "♀ 雌",
+    age: "约 2 岁",
+    weight: "约 3.8 kg",
+    status: "已绝育 ✅",
+    img: "cute_illustrated_cat_portrait_white_fluf_1776656070.png",
+    badges: ["绝育", "胆小", "优雅"],
+    locations: ["图书馆北门台阶", "图书馆侧门绿化带", "近春园草坪"],
+    personality: "雪团有着一身雪白蓬松的毛发和淡蓝色的眼睛，安静优雅，总是盘踞在图书馆台阶上，仿佛也在认真学习。对陌生人有些胆怯，需要慢慢接近，熟悉后会允许短暂抚摸。",
+    rescue: "2023年3月由学生发现时是一只约3月龄的小奶猫，由协会成员寄养、救助后放归。目前健康，已完成疫苗和绝育。",
+    relations: [
+      { catId: 5, type: "好朋友", emoji: "🤍", desc: "时常在主楼附近一起玩耍" },
+      { catId: 0, type: "认识", emoji: "👋", desc: "偶尔在路上相遇，互不干涉" }
+    ]
+  },
+  {
+    id: 2,
+    name: "月月",
+    nickname: "别名：荷塘女王 / 小三花",
+    color: "#E05080",
+    breed: "三花猫",
+    gender: "♀ 雌",
+    age: "约 4 岁",
+    weight: "约 3.5 kg",
+    status: "已绝育 ✅",
+    img: "cute_illustrated_cat_portrait_calico_tor_1776656084.png",
+    badges: ["绝育", "领地意识强", "美丽"],
+    locations: ["荷塘月色周边", "照澜院附近", "近春园"],
+    personality: "月月是荷塘附近的\"地头蛇\"，独自占据着荷塘周边的地盘。性格独立骄傲，不太喜欢其他猫咪靠近，但对人类却出奇地友好——在月色下的荷塘边轻声呼唤，她会慢慢走来用头蹭你的手。",
+    rescue: "校园资深居民，已在荷塘生活超过3年，是协会最早建档的猫咪之一。健康状况稳定。",
+    relations: [
+      { catId: 0, type: "好朋友", emoji: "🧡", desc: "橘福常来荷塘蹭吃蹭玩" },
+      { catId: 3, type: "家族关系", emoji: "👨‍👩‍👧", desc: "疑似是茶叶的远亲" }
+    ]
+  },
+  {
+    id: 3,
+    name: "茶叶",
+    nickname: "别名：老茶 / 工字厅管理员",
+    color: "#2E7D32",
+    breed: "狸花猫",
+    gender: "♂ 雄",
+    age: "约 6 岁",
+    weight: "约 5.2 kg",
+    status: "已绝育 ✅",
+    img: "cute_illustrated_cat_portrait_charcoal_g_1776656115.png",
+    badges: ["绝育", "元老级", "稳重"],
+    locations: ["工字厅庭院", "甲所附近", "水木清华牌匾周边"],
+    personality: "茶叶是校园里资历最深的猫咪之一，稳重老成，行事低调。它喜欢蜷缩在工字厅的古典廊柱旁，与百年建筑相得益彰。对于来拍照的游客和参观者，茶叶显得十分配合，是天然的\"校园文化使者\"。",
+    rescue: "协会记录显示茶叶至少在校6年，具体来源不明，可能是被遗弃的前宠物猫。精神状态佳，每年定期驱虫。",
+    relations: [
+      { catId: 2, type: "家族关系", emoji: "👨‍👩‍👧", desc: "疑似与月月有亲缘关系" },
+      { catId: 0, type: "竞争对手", emoji: "⚔️", desc: "争夺工字厅到食堂的路线控制权" }
+    ]
+  },
+  {
+    id: 4,
+    name: "豆豆",
+    nickname: "别名：运动健将 / 黑白闪",
+    color: "#1565C0",
+    breed: "奶牛猫（黑白色）",
+    gender: "♂ 雄",
+    age: "约 2.5 岁",
+    weight: "约 4.8 kg",
+    status: "已绝育 ✅",
+    img: "cute_illustrated_cat_portrait_black_and__1776656131.png",
+    badges: ["绝育", "活泼", "运动健将"],
+    locations: ["综合体育馆周边", "西大操场看台下", "体育馆停车场"],
+    personality: "豆豆精力充沛，和它所在的体育馆环境完美契合。它喜欢追逐来往的自行车，也喜欢在草坪上追蝴蝶。性格活泼开朗，是只自来熟的猫咪，会主动跑过来迎接同学，深受体育课同学们的喜爱。",
+    rescue: "2023年夏天以幼猫身份被体育馆工作人员发现，由协会接手救助，完成疫苗和绝育后放归体育馆区域生活。",
+    relations: [
+      { catId: 5, type: "好朋友", emoji: "💙", desc: "最铁的玩伴，经常一起在操场乱跑" },
+      { catId: 1, type: "共同领地", emoji: "🏠", desc: "偶尔会去图书馆附近串门" }
+    ]
+  },
+  {
+    id: 5,
+    name: "小煤球",
+    nickname: "别名：煤煤 / 影子猫",
+    color: "#37474F",
+    breed: "纯黑猫",
+    gender: "♀ 雌",
+    age: "约 1.5 岁",
+    weight: "约 3.2 kg",
+    status: "已绝育 ✅",
+    img: "cute_illustrated_cat_portrait_pure_black_1776656147.png",
+    badges: ["绝育", "神秘", "最年轻"],
+    locations: ["主楼周边", "西阶教室旁", "主楼停车场"],
+    personality: "小煤球全身纯黑，在夜里几乎隐形，只有一双金黄色的眼睛会发光，神秘而迷人。白天喜欢躲在主楼附近的角落观察人类，不轻易靠近，但如果你蹲下来耐心等待，她可能会慢慢走近嗅嗅你的手。",
+    rescue: "2024年初被发现时是约3月龄的小奶猫，瘦小可怜。经协会紧急救助、寄养、接种疫苗和绝育手术后，于2024年春季放归主楼区域。是协会建档最新的成员。",
+    relations: [
+      { catId: 1, type: "好朋友", emoji: "🖤", desc: "一黑一白，形影不离的好朋友" },
+      { catId: 4, type: "好朋友", emoji: "💙", desc: "豆豆的玩伴，经常一起玩" }
+    ]
+  }
+];
+
+// Gallery render
+function renderGallery() {
+  const grid = document.getElementById('gallery-grid');
+  grid.innerHTML = cats.map(cat => `
+    <div class="gallery-card" onclick="switchToMapAndSelect(${cat.id})">
+      <img class="gallery-card-img" src="${cat.img}" alt="${cat.name}" onerror="this.src='data:image/svg+xml,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'260\\' height=\\'200\\'><rect width=\\'260\\' height=\\'200\\' fill=\\'${encodeURIComponent(cat.color)}\\'/><text x=\\'130\\' y=\\'110\\' text-anchor=\\'middle\\' font-size=\\'60\\'>🐱</text></svg>'"/>
+      <div class="gallery-card-body">
+        <div class="gallery-card-name">${cat.name}</div>
+        <div class="gallery-card-sub">${cat.nickname}</div>
+        <div class="gallery-card-tags">
+          <span class="gallery-tag">${cat.breed}</span>
+          <span class="gallery-tag">${cat.gender}</span>
+          <span class="gallery-tag">${cat.age}</span>
+          ${cat.badges.map(b => `<span class="gallery-tag">${b}</span>`).join('')}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function switchToMapAndSelect(id) {
+  switchView('map');
+  setTimeout(() => selectCat(id), 100);
+}
+
+// Relation graph render
+function renderRelations() {
+  const svg = document.getElementById('relation-svg');
+  const W = svg.clientWidth || 900, H = svg.clientHeight || 500;
+  
+  const positions = [
+    { x: W*0.2, y: H*0.7 },   // 橘福
+    { x: W*0.6, y: H*0.6 },   // 雪团
+    { x: W*0.25, y: H*0.3 },  // 月月
+    { x: W*0.15, y: H*0.55 }, // 茶叶
+    { x: W*0.8, y: H*0.55 },  // 豆豆
+    { x: W*0.55, y: H*0.3 },  // 小煤球
+  ];
+
+  const relColors = { "好朋友": "#FF6B6B", "家族关系": "#A855F7", "竞争对手": "#94A3B8", "共同领地": "#22C55E", "认识": "#CBD5E1" };
+  const relDash = { "竞争对手": "8,4", "认识": "4,4" };
+
+  let svgContent = `
+    <defs>
+      <filter id="glow"><feGaussianBlur stdDeviation="3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" style="stop-color:#F0EAFF"/>
+        <stop offset="100%" style="stop-color:#E8E0FF"/>
+      </radialGradient>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#bgGrad)"/>
+    <text x="${W/2}" y="36" text-anchor="middle" font-size="20" font-weight="bold" fill="#4A0FA8" font-family="sans-serif">🐾 清华校园猫咪关系图谱</text>
+  `;
+
+  // Draw edges
+  const drawn = new Set();
+  cats.forEach(cat => {
+    cat.relations.forEach(rel => {
+      const key = [Math.min(cat.id,rel.catId), Math.max(cat.id,rel.catId)].join('-');
+      if (drawn.has(key)) return;
+      drawn.add(key);
+      const p1 = positions[cat.id], p2 = positions[rel.catId];
+      const color = relColors[rel.type] || '#999';
+      const dash = relDash[rel.type] ? `stroke-dasharray="${relDash[rel.type]}"` : '';
+      const mx = (p1.x + p2.x)/2, my = (p1.y + p2.y)/2;
+      svgContent += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="${color}" stroke-width="3" ${dash} opacity="0.7"/>`;
+      svgContent += `<rect x="${mx-32}" y="${my-11}" width="64" height="18" rx="9" fill="white" opacity="0.85"/>`;
+      svgContent += `<text x="${mx}" y="${my+3}" text-anchor="middle" font-size="10" fill="${color}" font-weight="600" font-family="sans-serif">${rel.type}</text>`;
+    });
+  });
+
+  // Draw nodes
+  cats.forEach((cat, i) => {
+    const p = positions[i];
+    svgContent += `
+      <g class="cat-marker" onclick="switchToMapAndSelect(${cat.id})" style="cursor:pointer">
+        <circle cx="${p.x}" cy="${p.y}" r="46" fill="${cat.color}" opacity="0.15" filter="url(#glow)"/>
+        <circle cx="${p.x}" cy="${p.y}" r="40" fill="white" stroke="${cat.color}" stroke-width="3"/>
+        <image href="${cat.img}" x="${p.x-30}" y="${p.y-40}" width="60" height="60" clip-path="circle(28px at 30px 30px)"
+          onerror=""/>
+        <text x="${p.x}" y="${p.y+50}" text-anchor="middle" font-size="14" font-weight="bold" fill="${cat.color}" font-family="sans-serif">${cat.name}</text>
+        <text x="${p.x}" y="${p.y+66}" text-anchor="middle" font-size="11" fill="#6B6B8A" font-family="sans-serif">${cat.breed}</text>
+      </g>
+    `;
+  });
+
+  svg.innerHTML = svgContent;
+}
+
+// Select cat
+let currentCat = null;
+function selectCat(id) {
+  // Reset markers
+  document.querySelectorAll('.cat-marker').forEach(m => m.classList.remove('active'));
+  document.getElementById(`marker-${id}`)?.classList.add('active');
+
+  const cat = cats[id];
+  currentCat = id;
+
+  document.getElementById('panel-empty').style.display = 'none';
+  const profile = document.getElementById('cat-profile');
+  profile.classList.add('visible');
+
+  document.getElementById('profile-img').src = cat.img;
+  document.getElementById('profile-img').onerror = function() {
+    this.src = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><rect width='120' height='120' rx='60' fill='${encodeURIComponent(cat.color)}'/><text x='60' y='75' text-anchor='middle' font-size='50'>🐱</text></svg>`;
+  };
+  document.getElementById('profile-name').textContent = cat.name;
+  document.getElementById('profile-nickname').textContent = cat.nickname;
+  
+  const badgesEl = document.getElementById('profile-badges');
+  badgesEl.innerHTML = cat.badges.map(b => `<span class="badge">${b}</span>`).join('');
+
+  const infoGrid = document.getElementById('profile-info-grid');
+  infoGrid.innerHTML = `
+    <div class="info-item"><div class="info-label">品种</div><div class="info-value">${cat.breed}</div></div>
+    <div class="info-item"><div class="info-label">性别</div><div class="info-value">${cat.gender}</div></div>
+    <div class="info-item"><div class="info-label">年龄</div><div class="info-value">${cat.age}</div></div>
+    <div class="info-item"><div class="info-label">体重</div><div class="info-value">${cat.weight}</div></div>
+    <div class="info-item" style="grid-column:span 2"><div class="info-label">状态</div><div class="info-value">${cat.status}</div></div>
+  `;
+
+  const locsEl = document.getElementById('profile-locations');
+  locsEl.innerHTML = cat.locations.map(l => `<span class="location-tag">📍 ${l}</span>`).join('');
+
+  document.getElementById('profile-personality').textContent = cat.personality;
+
+  const relsEl = document.getElementById('profile-relations');
+  relsEl.innerHTML = cat.relations.map(rel => {
+    const relCat = cats[rel.catId];
+    return `
+      <div class="rel-item" onclick="selectCat(${rel.catId})">
+        <img class="rel-avatar" src="${relCat.img}" alt="${relCat.name}" onerror="this.src='data:image/svg+xml,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'36\\' height=\\'36\\'><rect width=\\'36\\' height=\\'36\\' rx=\\'18\\' fill=\\'${encodeURIComponent(relCat.color)}\\'/><text x=\\'18\\' y=\\'24\\' text-anchor=\\'middle\\' font-size=\\'18\\'>🐱</text></svg>'"/>
+        <div class="rel-info">
+          <div class="rel-name">${relCat.name}</div>
+          <div class="rel-type">${rel.type} · ${rel.desc}</div>
+        </div>
+        <div class="rel-emoji">${rel.emoji}</div>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('profile-rescue').textContent = cat.rescue;
+}
+
+// Switch views
+function switchView(view) {
+  document.getElementById('view-map').style.display = view === 'map' ? 'flex' : 'none';
+  document.getElementById('view-gallery').style.display = view === 'gallery' ? 'block' : 'none';
+  document.getElementById('view-relations').style.display = view === 'relations' ? 'block' : 'none';
+
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`tab-${view}`).classList.add('active');
+
+  if (view === 'gallery') renderGallery();
+  if (view === 'relations') setTimeout(renderRelations, 50);
+}
+
+// Init
+renderGallery();
+</script>
+</body>
+</html>
